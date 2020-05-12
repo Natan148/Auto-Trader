@@ -7,7 +7,8 @@ interface IUser extends mongoose.Document {
     email: string;
     password: string;
     savedAds: [string];
-    listOfAction: [{actionType: ACTIONS_TYPES, date: Date}];
+    listOfAction: [{actionType: ACTIONS_TYPES, date: string}];
+    failedLoginCounter: number;
     date: Date;
 }
 

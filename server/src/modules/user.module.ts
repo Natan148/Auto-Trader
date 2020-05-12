@@ -8,6 +8,7 @@ const User: Schema = new Schema({
     password: { type: String, required: true, minlength : 6 },
     savedAds: { type: Array, required: true },
     listOfAction: { type: Array, required: true },
+    failedLoginCounter: { type: Number, default: 0 },
     date: { type: Date, default: Date.now() },
 });
 
