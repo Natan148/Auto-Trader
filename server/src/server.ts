@@ -7,7 +7,7 @@ import usersRoute from './routes/users.route';
 
 // Connect to db
 mongoose.connect(
-    "mongodb://localhost:27017/bank",
+    "mongodb://localhost:27017/autotrader",
     { useNewUrlParser: true, useUnifiedTopology: true },
     () => console.log("Connected to db")
 )

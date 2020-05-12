@@ -4,16 +4,17 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import IUser from '../modules/user.module';
 import IWhitelist from '../modules/whitelist.module';
-import { registerValidation, loginValidation } from '../validations';
-import { ACTIONS_TYPES } from '../enums';
+import { registerValidation, loginValidation, passwordValidation } from '../validations';
+import { ACTIONS_TYPES, SECRET_KEY } from '../properties';
+import { verifyToken } from '../verifyToken';
 import { resolve } from 'dns';
 import { rejects } from 'assert';
 
-const SECRET_KEY = "nnnaaahdyll";
+
 
 const router = Router();
 
-// TODO 
+// TODO update white list date on user activity
 
 // TODO middleware witch allow access to the admin only 
 router.get('/', async (req: Request, res: Response) => {
@@ -58,7 +59,7 @@ router.post('/register', async (req: Request, res: Response) => {
     try {
         const savedUser = await user.save();
         updateActionsList(savedUser._id, ACTIONS_TYPES.REGISTER);
-        const token = jwt.sign({_id: savedUser._id}, SECRET_KEY);
+        const token = jwt.sign(savedUser._id.toString(), SECRET_KEY);
         res.header('auth-token', token).send(token);
         console.log(`The new account was registered successfully ==> ${moment().format()}`);
     } catch(err) {
@@ -85,7 +86,7 @@ router.post('/login', async (req: Request, res: Response) => {
         IUser.findOne({ email: req.body.email }, async (err, user) => {
             if (err) return res.status(500).send(err.message);
             if (user) {
-                const token = jwt.sign({_id: user._id}, SECRET_KEY);
+                const token = jwt.sign(user._id.toString(), SECRET_KEY);
                 try {
                     await new IWhitelist({ token }).save()
                     console.log(`The token was inserted to the whitelist ==> ${moment().format()}`);
@@ -101,17 +102,25 @@ router.post('/login', async (req: Request, res: Response) => {
        return res.status(err.status).send(err.msg) });
 }) 
 
-// TODO middleware witch verify the given access token
-router.delete('/del', async (req: Request, res: Response) => {
-    // TODO cannot get token from header
+router.delete('/del', verifyToken, async (req: Request, res: Response) => {
     const token = req.header('auth-token');
     if (token) {
         const id = jwt.verify(token, SECRET_KEY);
         console.log(`Try to delete user with id: ${id} ==> ${moment().format()}`);
+        const password = req.body.password;
+        if (!password) {
+            console.log(`There is no password ==> ${moment().format()}`);
+            return res.status(400).send('Password is missing');
+        }
         try {
-            await IUser.deleteOne({ _id: id })
-            console.log(`User deleted successfully ==> ${moment().format()}`);
-            res.sendStatus(200);
+            const user = await IUser.findById({ _id: id });
+            user && userAuthentication(user.email, password)
+            .then(async () => {
+                await user.remove();
+                console.log(`User deleted successfully ==> ${moment().format()}`);
+                res.sendStatus(200);
+            })
+            .catch(err => { return res.status(err.status).send(err.msg) });
         } catch(err) {
             console.log(`There was an error during deleting the user ${id} - ${err.message}
             ==> ${moment().format()}`);
@@ -132,17 +141,15 @@ router.get('/isEmailExists/:email', async (req: Request, res: Response) => {
     .catch(err => res.status(err.status).send(err));   
 })
 
-// TODO middleware witch verify the given access token
-router.post('/logout', (req: Request, res: Response) => {
-    // TODO cannot get token from header
-    const token = req.header('auth-token');
-    console.log(token)
+router.post('/logout', verifyToken, async (req: Request, res: Response) => {
+    const token = req.get('auth-token');
     if (token) {
-        const id = jwt.verify(token, "nnnaaahdyll");
+        const id = jwt.verify(token, SECRET_KEY);
         console.log(`User with id ${id} logging out ==> ${moment().format()}`);
-        IWhitelist.deleteOne({ token });
-        updateActionsList(id.toString(), ACTIONS_TYPES.LOGOUT);
-        res.sendStatus(200);
+        await IWhitelist.deleteOne({ token });
+        updateActionsList(id.toString(), ACTIONS_TYPES.LOGOUT)
+        .then(() => {return res.sendStatus(200)})
+        .catch(err => {return res.status(err.status).send(err.msg)});
     }
 })
 
@@ -175,10 +182,20 @@ const userAuthentication =
     })
 }
 
-const updateActionsList = async (id: string, actionType: ACTIONS_TYPES) => {
+const updateActionsList = async (id: string, actionType: ACTIONS_TYPES): Promise<void> => {
     console.log(`Update action ${actionType} list for id ${id} ==> ${moment().format()}`);
-    const newAction = { actionType: actionType, date: moment().format() };
-    await IUser.updateOne({ _id: id }, { $push: { listOfAction: newAction } })
+    return new Promise<void>
+    ((resolve: () => void, reject: (err: {status: number, msg: string}) => void) => {
+        const newAction = { actionType: actionType, date: moment().format() };
+        IUser.updateOne({ _id: id }, { $push: { listOfAction: newAction } }, err => {
+            if (err) {
+                console.error(`There was an error during \"updateActionsList\" - ${err.message}
+                ==> ${moment().format()}`);
+                return reject({ status: 500, msg: err.message });
+            }
+            resolve();
+        })
+    })
 }
 
 const isEmailExists = (email: string): Promise<boolean> => {
