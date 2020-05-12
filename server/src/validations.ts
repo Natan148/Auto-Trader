@@ -18,7 +18,7 @@ export const loginValidation = (data: any) => {
 
 export const passwordValidation = (data: any) => {
     return  Joi.object().keys({
-        password: Joi.string().max(50).required(),
+        password: Joi.string().min(6).max(50).required(),
     }).validate(data)
 }
 

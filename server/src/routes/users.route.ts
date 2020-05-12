@@ -60,8 +60,12 @@ router.post('/register', async (req: Request, res: Response) => {
         const savedUser = await user.save();
         updateActionsList(savedUser._id, ACTIONS_TYPES.REGISTER);
         const token = jwt.sign(savedUser._id.toString(), SECRET_KEY);
-        res.header('auth-token', token).send(token);
-        console.log(`The new account was registered successfully ==> ${moment().format()}`);
+        insertTokenToWhitelist(token)
+        .then(() => {
+            res.header('auth-token', token).send(token);
+            console.log(`The new account was registered successfully ==> ${moment().format()}`);
+        })
+        .catch(err => res.status(err.status).send(err.msg));
     } catch(err) {
         console.log(`The registration filed:`, err, ` ==> ${moment().format()}`);
         // TODO Check if the error has status code 400 or 500
@@ -88,10 +92,12 @@ router.post('/login', async (req: Request, res: Response) => {
             if (user) {
                 const token = jwt.sign(user._id.toString(), SECRET_KEY);
                 try {
-                    await new IWhitelist({ token }).save()
-                    console.log(`The token was inserted to the whitelist ==> ${moment().format()}`);
-                    res.header('auth-token', token).send(token);
-                    updateActionsList(user._id, ACTIONS_TYPES.LOGIN);
+                    insertTokenToWhitelist(token)
+                    .then(() => {
+                        res.header('auth-token', token).send(token);
+                        updateActionsList(user._id, ACTIONS_TYPES.LOGIN);
+                    })
+                    .catch(err => res.status(err.status).send(err.msg));
                 } catch(err) {return console.log(`There was an error: ${err.message}
                 ==> ${moment().format()}`)};   
             }
@@ -153,13 +159,73 @@ router.post('/logout', verifyToken, async (req: Request, res: Response) => {
     }
 })
 
+router.put('/changePass', verifyToken, async (req: Request, res: Response) => {
+    const token = req.get('auth-token');
+    if (token) {
+        const id = jwt.verify(token, SECRET_KEY);
+        console.log(`Try to change password with id ${id} ==> ${moment().format()}`);
+        const password = req.body.password;
+        const newPassword = req.body.newPassword;
+        if (!password || !newPassword) {
+            console.log(`Password or newPassword is missing ==> ${moment().format()}`);
+            return res.status(400).send('Password or newPassword is missing');
+        }
+        if (password === newPassword) {
+            console.log(`The both of the passwords are equal ==> ${moment().format()}`);
+            return res.status(400).send('The both of the passwords are equal');
+        }
+        try {
+            const user = await IUser.findById(id);
+            user && userAuthentication(user.email, password)
+            .then(async () => {
+                const { error } = passwordValidation({ password: newPassword });
+                if (error) {
+                    console.log(`The newPassword ${newPassword} is invalid`);
+                    return res.status(400).send(error.details[0].message);
+                }
+                const salt = await bcrypt.genSalt(10);
+                const hashedPass = await bcrypt.hash(newPassword, salt);
+                await user.updateOne({ password: hashedPass });
+                console.log(`The password was updated to ${newPassword} successfully 
+                ==> ${moment().format()}`);
+                res.sendStatus(200);
+            })
+            .catch(err => { return res.status(err.status).send(err.msg) });
+        } catch(err) {
+            console.log(`There was an error during changePass - ${err.message}`);
+            res.status(500).send(err.message);
+        }
+    }
+})
+
+const insertTokenToWhitelist = (token: string): Promise<void> => {
+    return new Promise<void>
+    ((resolve: () => void, reject: (err: {status: number, msg: string}) => void) => {
+        const query = { token },
+            update = { token },
+            options = { upsert: true, new: true, setDefaultsOnInsert: true };
+            
+        IWhitelist.findOneAndUpdate(query, update, options, error => {
+            if (error) {
+                console.log(`There was an error during \"insertTokenToWhitelist\" - ${error.message}
+                ==> ${moment().format()}`);
+                return reject({ status: 500, msg: error.message});
+            };
+            console.log(`The token ${token} was inserted into the whitelist
+            ==> ${moment().format()}`);
+            resolve();
+        });
+    })
+} 
+
 const userAuthentication = 
 (email: string, password: string): Promise<void> => {
     console.log(`Check authentication for email ${email} and pass ${password}
-     ==> ${moment().format()}`);
+    ==> ${moment().format()}`);
     return new Promise<void>
     ((resolve: () => void, reject: (err: { status: number, msg: string }) => void) => {
         IUser.findOne({ email }, (err, user) => {
+            // TODO check if there is also an email in this authentication
             const incorrectPass = {status: 400, msg: "The email or password is incorrect"};
             if (err) {
                 console.log(`There was an error: ${err.message} ==> ${moment().format()}`);
