@@ -28,7 +28,7 @@ router.get('/', async (req: Request, res: Response) => {
         res.send(doc);
     })
 })
-
+// cr-evgeni: this function is really long , think how to seperate it to smaller functions.
 router.post('/register', async (req: Request, res: Response) => {
     console.log(`Try register with `, req.body, ` ==> ${moment().format()}`);
     const { error } = registerValidation(req.body);
@@ -45,6 +45,7 @@ router.post('/register', async (req: Request, res: Response) => {
     })
     .catch(err => {return res.status(err.status).send(err.msg)});
 
+    // cr-evgeni: move this two lines to a function in utils dir, for future use. 
     const salt = await bcrypt.genSalt(10);
     const hashedPass = await bcrypt.hash(req.body.password, salt);
 
@@ -107,7 +108,8 @@ router.post('/login', async (req: Request, res: Response) => {
        err.status === 400 && setFailedLoginCounter(req.body.email, false);
        return res.status(err.status).send(err.msg) });
 }) 
-
+// cr-evgeni: you have here a middleware of verify token , then why you do it again in this function ?
+// you do it almost in all routes. 
 router.delete('/del', verifyToken, async (req: Request, res: Response) => {
     const token = req.header('auth-token');
     if (token) {
@@ -158,7 +160,7 @@ router.post('/logout', verifyToken, async (req: Request, res: Response) => {
         .catch(err => {return res.status(err.status).send(err.msg)});
     }
 })
-
+// cr-evgeni: think how seperate to smaller functions and orginze in seperate files. . 
 router.put('/changePass', verifyToken, async (req: Request, res: Response) => {
     const token = req.get('auth-token');
     if (token) {
@@ -197,6 +199,8 @@ router.put('/changePass', verifyToken, async (req: Request, res: Response) => {
         }
     }
 })
+// cr-evgeni: this file should contains only routes, think how move functions to seperate files. 
+
 
 const insertTokenToWhitelist = (token: string): Promise<void> => {
     return new Promise<void>
@@ -299,3 +303,9 @@ const setFailedLoginCounter = (email: string, reset: boolean): void => {
 }
 
 export default router;
+
+//cr-evgeni: conclude:
+// *seperate to smaller functions , each function needs to be 5-6 lines, not more . 
+// *think how move functions to seperate files, like you did with "users.route.ts", this file should
+// contain only user-related functions.
+// always think which types you use , if needed create interfaces .  
