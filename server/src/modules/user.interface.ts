@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import { ACTIONS_TYPES } from '../enums';
+import { ACTIONS_TYPES } from '../properties';
 
 interface IUser extends mongoose.Document {
     firstName: string;

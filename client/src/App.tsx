@@ -1,11 +1,15 @@
-import React from 'react';
-import logo from './logo.svg';
+import React, { useEffect } from 'react';
+import { useSelector } from './index';
 import './App.css';
+import { RootState } from './store/index';
+import Test from './components/Test';
 
 function App() {
+  const user = useSelector((state) => state.user);
+  useEffect(() => console.log(user));
   return (
-    <div className="App">
-    	<h1>Yoel the king</h1>
+    <div>
+      <h1>{67}</h1>
     </div>
   );
 }

@@ -10,13 +10,12 @@ import { verifyToken } from '../verifyToken';
 import { resolve } from 'dns';
 import { rejects } from 'assert';
 
-
-
 const router = Router();
 
 // TODO update white list date on user activity
+// TODO function which runs every minute, and check users activity
 
-// TODO middleware witch allow access to the admin only 
+// TODO middleware which allow access to the admin only 
 router.get('/', async (req: Request, res: Response) => {
     console.log(`Try to get all users ==> ${moment().format()}`);
     IUser.find({}, (err, doc) => {

@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import IWhitelist from './whiteList.interface';
+import IWhitelist from './whitelist.interface';
 
 const Whitelist: Schema = new Schema({
     token: {type: String, required: true, unique: true},
