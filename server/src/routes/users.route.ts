@@ -180,7 +180,7 @@ router.put('/changePass', verifyToken, async (req: Request, res: Response) => {
             const user = await IUser.findById(id);
             user && userAuthentication(user.email, password)
             .then(async () => {
-                const { error } = passwordValidation({ password: newPassword });
+                const { error } = passwordValidation(newPassword);
                 if (error) {
                     console.log(`The newPassword ${newPassword} is invalid`);
                     return res.status(400).send(error.details[0].message);
