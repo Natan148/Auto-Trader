@@ -1,15 +1,20 @@
 import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Switch, Route, Link } from 'react-router-dom';
 import { useSelector } from './index';
 import './App.css';
 import { RootState } from './store/index';
-import Test from './components/Test';
+import Home from './components/Home';
 
 function App() {
   const user = useSelector((state) => state.user);
   useEffect(() => console.log(user));
   return (
-    <div>
-      <h1>{67}</h1>
+    <div className="App">
+      <Router>
+        <Switch>
+          <Route path="/" component={Home} />
+        </Switch>
+      </Router>
     </div>
   );
 }

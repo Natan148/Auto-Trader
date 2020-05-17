@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Redirect, withRouter, RouteComponentProps } from 'react-router-dom';
 import { createStyles, makeStyles, Theme } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
 import IconButton from '@material-ui/core/IconButton';
-import MenuIcon from '@material-ui/icons/Menu';
 import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder';
 import AccountCircle from '@material-ui/icons/AccountCircle';
 import ExitToAppIcon from '@material-ui/icons/ExitToApp';
@@ -14,8 +14,8 @@ import FormGroup from '@material-ui/core/FormGroup';
 import MenuItem from '@material-ui/core/MenuItem';
 import HomeIcon from '@material-ui/icons/Home';
 import Menu from '@material-ui/core/Menu';
-import FavoriteIcon from '@material-ui/icons/Favorite';
 import { Popup } from 'semantic-ui-react';
+import { ReactComponent as Logo } from '../../autotrader.svg';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -31,19 +31,15 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-export default function MenuAppBar() {
+const AutoNav: React.FunctionComponent<RouteComponentProps> = () => {
   const classes = useStyles();
   const [auth, setAuth] = React.useState(true);
+  const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const [showPopup, setShowPopup] = React.useState<boolean>(false);
   const open = Boolean(anchorEl);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setAuth(event.target.checked);
-  };
-
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
   };
 
   const handleClose = () => {
@@ -71,12 +67,23 @@ export default function MenuAppBar() {
             className={classes.menuButton}
             color="inherit"
             aria-label="menu"
+            onClick={() => setRedirectTo('/')}
           >
-            <HomeIcon fontSize="large" />
+            <Logo
+              style={{
+                width: '200px',
+                height: '50',
+              }}
+            />
           </IconButton>
-          {/* <img src={"C:\Users\natan\Desktop\Projects\auto-trader\Auto-Trader\client\public\autotrader.svg"} /> */}
-          <Typography variant="h5" className={classes.title}>
-            | Home
+          <Typography
+            variant="h5"
+            className={classes.title}
+            style={{
+              textAlign: 'left',
+            }}
+          >
+            |
           </Typography>
           <div>
             <Popup
@@ -89,6 +96,7 @@ export default function MenuAppBar() {
                     aria-controls="menu-appbar"
                     aria-haspopup="true"
                     color="inherit"
+                    onClick={() => setRedirectTo('/savedAds')}
                   >
                     <FavoriteBorderIcon />
                   </IconButton>
@@ -107,6 +115,7 @@ export default function MenuAppBar() {
                     aria-controls="menu-appbar"
                     aria-haspopup="true"
                     color="inherit"
+                    onClick={() => auth || setRedirectTo('/login')}
                   >
                     {auth ? <AccountCircle /> : <ExitToAppIcon />}
                   </IconButton>
@@ -136,6 +145,9 @@ export default function MenuAppBar() {
           </div>
         </Toolbar>
       </AppBar>
+      {redirectTo && <Redirect to={redirectTo} />}
     </div>
   );
-}
+};
+
+export default withRouter(AutoNav);
