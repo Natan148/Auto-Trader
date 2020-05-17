@@ -19,7 +19,10 @@ export async function verifyToken (req: Request, res: Response, next: NextFuncti
     } 
 
     try {
-        jwt.verify(token, SECRET_KEY);
+        const id = jwt.verify(token, SECRET_KEY);
+
+        // Add the id to the session
+        req.session!.userId = id;
     } catch(err) {
         return res.status(401).send("Invalid token");
     }

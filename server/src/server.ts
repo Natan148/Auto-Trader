@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import session from 'express-session';
 import mongoose from 'mongoose';
 import cors from 'cors';
 
@@ -12,7 +13,13 @@ mongoose.connect(
     () => console.log("Connected to db")
 )
 
-const app = express()
+const app = express();
+app.use(session({
+    secret: 'keyboard cat',
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: true }
+}));
 app.use(express.json());
 app.use(cors());
 app.use('/users', usersRoute);

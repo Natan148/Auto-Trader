@@ -5,10 +5,17 @@ import jwt from 'jsonwebtoken';
 import IUser from '../modules/user.module';
 import IWhitelist from '../modules/whitelist.module';
 import { registerValidation, loginValidation, passwordValidation } from '../validations';
+import {
+    insertTokenToWhitelist,
+    userAuthentication,
+    updateActionsList,
+    isEmailExists,
+    setFailedLoginCounter,
+    hashPass,
+    checkBeforeChangePass
+} from '../functions/users/users.functions';
 import { ACTIONS_TYPES, SECRET_KEY } from '../properties';
 import { verifyToken } from '../verifyToken';
-import { resolve } from 'dns';
-import { rejects } from 'assert';
 
 const router = Router();
 
@@ -27,7 +34,7 @@ router.get('/', async (req: Request, res: Response) => {
         res.send(doc);
     })
 })
-
+// cr-evgeni: this function is really long , think how to seperate it to smaller functions.
 router.post('/register', async (req: Request, res: Response) => {
     console.log(`Try register with `, req.body, ` ==> ${moment().format()}`);
     const { error } = registerValidation(req.body);
@@ -43,15 +50,12 @@ router.post('/register', async (req: Request, res: Response) => {
         }   
     })
     .catch(err => {return res.status(err.status).send(err.msg)});
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPass = await bcrypt.hash(req.body.password, salt);
-
+    // cr-evgeni: move this two lines to a function in utils dir, for future use. 
     const user = new IUser({
         firstName: req.body.firstName,
         lastName: req.body.lastName,
         email: req.body.email,
-        password: hashedPass,
+        password: await hashPass(req.body.password),
         savedAds: []
     })
 
@@ -107,30 +111,29 @@ router.post('/login', async (req: Request, res: Response) => {
        return res.status(err.status).send(err.msg) });
 }) 
 
+// cr-evgeni: you have here a middleware of verify token , then why you do it again in this function ?
+// you do it almost in all routes. 
 router.delete('/del', verifyToken, async (req: Request, res: Response) => {
-    const token = req.header('auth-token');
-    if (token) {
-        const id = jwt.verify(token, SECRET_KEY);
-        console.log(`Try to delete user with id: ${id} ==> ${moment().format()}`);
-        const password = req.body.password;
-        if (!password) {
-            console.log(`There is no password ==> ${moment().format()}`);
-            return res.status(400).send('Password is missing');
-        }
-        try {
-            const user = await IUser.findById({ _id: id });
-            user && userAuthentication(user.email, password)
-            .then(async () => {
-                await user.remove();
-                console.log(`User deleted successfully ==> ${moment().format()}`);
-                res.sendStatus(200);
-            })
-            .catch(err => { return res.status(err.status).send(err.msg) });
-        } catch(err) {
-            console.log(`There was an error during deleting the user ${id} - ${err.message}
-            ==> ${moment().format()}`);
-            res.status(500).send(err.message);
-        }
+    const id = req.session!.userId;
+    console.log(`Try to delete user with id: ${id} ==> ${moment().format()}`);
+    const password = req.body.password;
+    if (!password) {
+        console.log(`There is no password ==> ${moment().format()}`);
+        return res.status(400).send('Password is missing');
+    }
+    try {
+        const user = await IUser.findById({ _id: id });
+        user && userAuthentication(user.email, password)
+        .then(async () => {
+            await user.remove();
+            console.log(`User deleted successfully ==> ${moment().format()}`);
+            res.sendStatus(200);
+        })
+        .catch(err => { return res.status(err.status).send(err.msg) });
+    } catch(err) {
+        console.log(`There was an error during deleting the user ${id} - ${err.message}
+        ==> ${moment().format()}`);
+        res.status(500).send(err.message);
     }
 })
 
@@ -148,153 +151,44 @@ router.get('/isEmailExists/:email', async (req: Request, res: Response) => {
 
 router.post('/logout', verifyToken, async (req: Request, res: Response) => {
     const token = req.get('auth-token');
-    if (token) {
-        const id = jwt.verify(token, SECRET_KEY);
-        console.log(`User with id ${id} logging out ==> ${moment().format()}`);
-        await IWhitelist.deleteOne({ token });
-        updateActionsList(id.toString(), ACTIONS_TYPES.LOGOUT)
-        .then(() => {return res.sendStatus(200)})
-        .catch(err => {return res.status(err.status).send(err.msg)});
-    }
+    const id = req.session!.userId;
+    console.log(`User with id ${id} logging out ==> ${moment().format()}`);
+    await IWhitelist.deleteOne({ token });
+    updateActionsList(id.toString(), ACTIONS_TYPES.LOGOUT)
+    .then(() => {return res.sendStatus(200)})
+    .catch(err => {return res.status(err.status).send(err.msg)});
 })
-
+// cr-evgeni: think how seperate to smaller functions and orginze in seperate files. . 
 router.put('/changePass', verifyToken, async (req: Request, res: Response) => {
-    const token = req.get('auth-token');
-    if (token) {
-        const id = jwt.verify(token, SECRET_KEY);
-        console.log(`Try to change password with id ${id} ==> ${moment().format()}`);
-        const password = req.body.password;
-        const newPassword = req.body.newPassword;
-        if (!password || !newPassword) {
-            console.log(`Password or newPassword is missing ==> ${moment().format()}`);
-            return res.status(400).send('Password or newPassword is missing');
-        }
-        if (password === newPassword) {
-            console.log(`The both of the passwords are equal ==> ${moment().format()}`);
-            return res.status(400).send('The both of the passwords are equal');
-        }
+    const id = req.session!.userId;;
+    console.log(`Try to change password with id ${id} ==> ${moment().format()}`);
+    const { password, newPassword } = req.body;
+    checkBeforeChangePass(password, newPassword)
+    .then(() => {
         try {
-            const user = await IUser.findById(id);
-            user && userAuthentication(user.email, password)
-            .then(async () => {
-                const { error } = passwordValidation({ password: newPassword });
-                if (error) {
-                    console.log(`The newPassword ${newPassword} is invalid`);
-                    return res.status(400).send(error.details[0].message);
-                }
-                const salt = await bcrypt.genSalt(10);
-                const hashedPass = await bcrypt.hash(newPassword, salt);
-                await user.updateOne({ password: hashedPass });
-                console.log(`The password was updated to ${newPassword} successfully 
-                ==> ${moment().format()}`);
-                res.sendStatus(200);
-            })
-            .catch(err => { return res.status(err.status).send(err.msg) });
+            IUser.findById(id, async (err, user) => {
+                if (err) return res.status(500).send(err.message);
+                userAuthentication(user!.email, password)
+                .then(async () => {
+                    await user!.updateOne({ password: await hashPass(newPassword) });
+                    console.log(`The password was updated to ${newPassword} successfully 
+                    ==> ${moment().format()}`);
+                    res.sendStatus(200);
+                })
+                .catch(err => { return res.status(err.status).send(err.msg) });
+            });
         } catch(err) {
             console.log(`There was an error during changePass - ${err.message}`);
             res.status(500).send(err.message);
         }
-    }
+    })
+    .catch(err => res.status(err.status.send(err.msg)));
 })
 
-const insertTokenToWhitelist = (token: string): Promise<void> => {
-    return new Promise<void>
-    ((resolve: () => void, reject: (err: {status: number, msg: string}) => void) => {
-        const query = { token },
-            update = { token },
-            options = { upsert: true, new: true, setDefaultsOnInsert: true };
-            
-        IWhitelist.findOneAndUpdate(query, update, options, error => {
-            if (error) {
-                console.log(`There was an error during \"insertTokenToWhitelist\" - ${error.message}
-                ==> ${moment().format()}`);
-                return reject({ status: 500, msg: error.message});
-            };
-            console.log(`The token ${token} was inserted into the whitelist
-            ==> ${moment().format()}`);
-            resolve();
-        });
-    })
-} 
-
-const userAuthentication = 
-(email: string, password: string): Promise<void> => {
-    console.log(`Check authentication for email ${email} and pass ${password}
-    ==> ${moment().format()}`);
-    return new Promise<void>
-    ((resolve: () => void, reject: (err: { status: number, msg: string }) => void) => {
-        IUser.findOne({ email }, (err, user) => {
-            // TODO check if there is also an email in this authentication
-            const incorrectPass = {status: 400, msg: "The email or password is incorrect"};
-            if (err) {
-                console.log(`There was an error: ${err.message} ==> ${moment().format()}`);
-                return reject({ status: 500, msg: err.message });
-            }
-            if (!user) {
-                console.log(`The email ${email} does not exists ==> ${moment().format()}`);
-                return reject(incorrectPass)
-            }
-            bcrypt.compare(password, user.password)
-            .then(correctPass => {
-                if (!correctPass) {
-                    console.log(`The password ${password} is incorrect ==> ${moment().format()}`);
-                    return reject(incorrectPass);
-                }
-                console.log(`The authentication was succeeded ==> ${moment().format()}`);
-                resolve();
-            })
-        })
-    })
-}
-
-const updateActionsList = async (id: string, actionType: ACTIONS_TYPES): Promise<void> => {
-    console.log(`Update action ${actionType} list for id ${id} ==> ${moment().format()}`);
-    return new Promise<void>
-    ((resolve: () => void, reject: (err: {status: number, msg: string}) => void) => {
-        const newAction = { actionType: actionType, date: moment().format() };
-        IUser.updateOne({ _id: id }, { $push: { listOfAction: newAction } }, err => {
-            if (err) {
-                console.error(`There was an error during \"updateActionsList\" - ${err.message}
-                ==> ${moment().format()}`);
-                return reject({ status: 500, msg: err.message });
-            }
-            resolve();
-        })
-    })
-}
-
-const isEmailExists = (email: string): Promise<boolean> => {
-    console.log(`Is email ${email} exists ==> ${moment().format()}`);
-    return new Promise<boolean>
-    ((resolve: (result: boolean) => void,
-     reject: (err: { status: number, msg: string }) => void) => {
-        IUser.findOne({ email }, (err, user) => {
-            if (err) {
-                console.log(`There was an error during isEmailExists: ${err.message}
-                 ==> ${moment().format()}`);
-                return reject({ status: 500, msg: err.message });
-            }
-            if (user) {
-                console.log(`The email ${email} already exists ==> ${moment().format()}`);
-                return resolve(true);
-            }
-            console.log(`The email ${email} does not exists ==> ${moment().format()}`);
-            resolve(false);
-        })
-    })
-}
-
-const setFailedLoginCounter = (email: string, reset: boolean): void => {
-    isEmailExists(email)
-    .then(result => {
-        if (result) {
-            console.log(`${reset ? 'reset' : 'set'} failed login counter ==> ${moment().format()}`);
-            IUser.findOne({ email }, async (err, user) => {
-                if (err) return console.log(`There was an error: ${err.message}`);
-                await user?.updateOne({ failedLoginCounter: reset ? 0 : +user.failedLoginCounter + 1});
-            })
-        }
-    })
-}
-
 export default router;
+
+//cr-evgeni: conclude:
+// *seperate to smaller functions , each function needs to be 5-6 lines, not more . 
+// *think how move functions to seperate files, like you did with "users.route.ts", this file should
+// contain only user-related functions.
+// always think which types you use , if needed create interfaces . 
