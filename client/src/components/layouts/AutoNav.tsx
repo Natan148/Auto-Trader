@@ -33,9 +33,9 @@ const useStyles = makeStyles((theme: Theme) =>
 
 const AutoNav: React.FunctionComponent<RouteComponentProps> = () => {
   const classes = useStyles();
-  const [auth, setAuth] = React.useState(true);
+  const [auth, setAuth] = React.useState(false);
   const [redirectTo, setRedirectTo] = useState<string | undefined>(undefined);
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,19 +48,10 @@ const AutoNav: React.FunctionComponent<RouteComponentProps> = () => {
 
   return (
     <div className={classes.root}>
-      <FormGroup>
-        <FormControlLabel
-          control={
-            <Switch
-              checked={auth}
-              onChange={handleChange}
-              aria-label="login switch"
-            />
-          }
-          label={auth ? 'Logout' : 'Login'}
-        />
-      </FormGroup>
-      <AppBar style={{ backgroundColor: '#313c53' }} position="static">
+      <AppBar
+        style={{ position: 'fixed', top: '0', backgroundColor: '#313c53' }}
+        position="static"
+      >
         <Toolbar>
           <IconButton
             edge="start"

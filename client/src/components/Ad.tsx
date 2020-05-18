@@ -7,13 +7,19 @@ import ExpansionPanelSummary from '@material-ui/core/ExpansionPanelSummary';
 import Typography from '@material-ui/core/Typography';
 import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
 import PhotoCameraIcon from '@material-ui/icons/PhotoCamera';
-import AttachMoneyIcon from '@material-ui/icons/AttachMoney';
 import CancelIcon from '@material-ui/icons/Cancel';
+import IconButton from '@material-ui/core/IconButton';
 import Container from '@material-ui/core/Container/Container';
+import ExpandLessIcon from '@material-ui/icons/ExpandLess';
 import Modal from '@material-ui/core/Modal';
 import Backdrop from '@material-ui/core/Backdrop';
+import FavoriteBorderIcon from '@material-ui/icons/FavoriteBorder';
+import PhotoLibraryIcon from '@material-ui/icons/PhotoLibrary';
 import Fade from '@material-ui/core/Fade';
 import ImageGallery from 'react-image-gallery';
+import EngineIcon from '../images/engine.png';
+import MilesIcon from '../images/miles.png';
+import FuelIcon from '../images/fuel.png';
 import '../../node_modules/react-image-gallery/styles/css/image-gallery.css';
 import './ad.css';
 import { AdDetails } from './ad.interface';
@@ -60,8 +66,9 @@ interface GalleryItem {
 const Ad: React.FC<Props> = (props) => {
   const details = props.details;
   const classes = useStyles();
-  const [expanded, setExpanded] = React.useState<string | false>(false);
-  const [open, setOpen] = React.useState(false);
+  const [expanded, setExpanded] = useState<string | false>(false);
+  const [openGallery, setOpenGallery] = useState(false);
+  const [hoverOnImg, setHoverOnImg] = useState(false);
 
   const createGallery = () => {
     const gallery: GalleryItem[] = [];
@@ -74,58 +81,106 @@ const Ad: React.FC<Props> = (props) => {
     return gallery;
   };
 
-  const handleOpen = (event: React.MouseEvent<HTMLElement>) => {
+  const handleOpenGallery = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault();
-    setOpen(true);
+    setOpenGallery(true);
   };
 
-  const handleClose = () => {
-    setOpen(false);
-  };
-
-  const handleChange = (panel: string) => (
-    event: React.ChangeEvent<{}>,
-    isExpanded: boolean
-  ) => {
-    setExpanded(isExpanded ? panel : false);
+  const handleCloseGallery = () => {
+    setOpenGallery(false);
   };
 
   return (
     <Container
       style={{
         width: '800px',
+        marginBottom: '15px',
       }}
     >
       <div className={classes.root}>
-        <ExpansionPanel
-          expanded={expanded === 'panel1'}
-          onChange={handleChange('panel1')}
-        >
+        <ExpansionPanel expanded={expanded === 'panel1'}>
           <ExpansionPanelSummary
-            // expandIcon={<ExpandMoreIcon />}
             aria-controls="panel1bh-content"
             id="panel1bh-header"
           >
+            <IconButton
+              id="expandIcon"
+              aria-haspopup="true"
+              color="inherit"
+              onClick={() =>
+                expanded ? setExpanded(false) : setExpanded('panel1')
+              }
+            >
+              {expanded ? (
+                <ExpandLessIcon fontSize="large" />
+              ) : (
+                <ExpandMoreIcon fontSize="large" />
+              )}
+            </IconButton>
             <div className="photosCounter">
               <PhotoCameraIcon />
               <label>{details.photos.length}</label>
             </div>
-            <img
-              className="mainImg"
-              src={details.photos[1]}
-              alt="There is no photos"
-              onClick={(e) => handleOpen(e)}
-            />
-            <Typography className={classes.heading}>
-              {details.make} | {details.model}
-              <div className="price">
-                <h2 id="priceText">{details.price}</h2>
-                <AttachMoneyIcon fontSize="large" />
-              </div>
-            </Typography>
-            {/* <Typography className={classes.secondaryHeading}>
-              I am an expansion panel
-            </Typography> */}
+            <div
+              className="photosBtn"
+              onMouseOver={() => setHoverOnImg(true)}
+              onMouseLeave={() => setHoverOnImg(false)}
+            >
+              {hoverOnImg && (
+                <div
+                  className="hoverOnImgDiv"
+                  onClick={(e) => handleOpenGallery(e)}
+                >
+                  <IconButton aria-haspopup="true" color="inherit">
+                    <PhotoLibraryIcon fontSize="large" />
+                  </IconButton>
+                </div>
+              )}
+              <img
+                className="mainImg"
+                src={details.photos[1]}
+                alt="There is no photos"
+              />
+            </div>
+            <div className="summeryContent">
+              <h3 className="carHeader">
+                {details.make} | {details.model} | {details.year}
+              </h3>
+              <IconButton
+                style={{
+                  position: 'absolute',
+                  right: '5px',
+                  top: '5px',
+                }}
+                className="saveIcon"
+                aria-haspopup="true"
+                color="inherit"
+              >
+                <FavoriteBorderIcon />
+              </IconButton>
+              <table>
+                <thead>
+                  <tr>
+                    <td>
+                      <img className="carIcon" src={EngineIcon} />
+                    </td>
+                    <td>
+                      <img className="carIcon" src={MilesIcon} />
+                    </td>
+                    <td>
+                      <img className="carIcon" src={FuelIcon} />
+                    </td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="carDetail">{details.engine_size}</td>
+                    <td className="carDetail">{details.miles}</td>
+                    <td className="carDetail">{details.fuel_type}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </ExpansionPanelSummary>
           <ExpansionPanelDetails>
             <Typography>
@@ -140,15 +195,15 @@ const Ad: React.FC<Props> = (props) => {
           aria-labelledby="transition-modal-title"
           aria-describedby="transition-modal-description"
           className={classes.modal}
-          open={open}
-          onClose={handleClose}
+          open={openGallery}
+          onClose={handleCloseGallery}
           closeAfterTransition
           BackdropComponent={Backdrop}
           BackdropProps={{
             timeout: 500,
           }}
         >
-          <Fade in={open}>
+          <Fade in={openGallery}>
             <div className={classes.paper}>
               <CancelIcon />
               <ImageGallery items={createGallery()} />

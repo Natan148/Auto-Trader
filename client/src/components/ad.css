@@ -1,3 +1,7 @@
+#panel1bh-header {
+  cursor: auto;
+}
+
 .photosCounter {
   background-color: hsla(0,0%,40%,.8);
   display: inline-flex;
@@ -7,4 +11,51 @@
 
 .mainImg {
   width: 248px;
+}
+
+.hoverOnImgDiv {
+  position: absolute;
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  width: 248px;
+  height: 186px;
+  opacity: 0.6;
+  background-color: #7f7f7f;
+}
+
+#expandIcon {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+}
+
+.summeryContent {
+  margin: 20px;
+}
+
+.carHeader {
+  display: table-cell;
+}
+
+.saveIcon {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+}
+
+table {
+  text-align: center;
+  width: 400px;
+  margin: 25px;
+}
+
+.carDetail {
+  padding-top: 10px;
+  font-weight: bold;
+}
+
+.carIcon {
+  width: 30px;
 }

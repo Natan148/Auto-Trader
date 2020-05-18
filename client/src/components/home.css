@@ -1,0 +1,10 @@
+.pagination {
+  display: inline-flex;
+}
+
+.adsList {
+  margin-top: 100px;
+  position: absolute;
+  right: 70px;
+
+}
