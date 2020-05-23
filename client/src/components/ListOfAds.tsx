@@ -2,8 +2,8 @@
 /* eslint react/prop-types: 0 */
 import React, { useState, useEffect } from 'react';
 import ClipLoader from 'react-spinners/ClipLoader';
-import { AdDetails } from './ad.interface';
-import Ad from './Ad';
+import { AdDetails } from './ad/ad.interface';
+import Ad from './ad/Ad';
 
 interface Props {
   listOfAds: AdDetails[] | null;

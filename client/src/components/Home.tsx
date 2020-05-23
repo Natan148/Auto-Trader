@@ -4,9 +4,8 @@ import { Redirect, withRouter, RouteComponentProps } from 'react-router-dom';
 import axios from 'axios';
 import Pagination from '@material-ui/lab/Pagination';
 import AutoNav from './layouts/AutoNav';
-import Ad from './Ad';
 import ListOfAds from './ListOfAds';
-import { AdDetails } from './ad.interface';
+import { AdDetails } from './ad/ad.interface';
 import './home.css';
 
 const Home: React.FunctionComponent<RouteComponentProps> = () => {
@@ -31,6 +30,7 @@ const Home: React.FunctionComponent<RouteComponentProps> = () => {
         listings.map((element: any) => {
           ads.push({
             id: element.id,
+            heading: element.heading,
             make: element.build.make,
             price: element.price,
             model: element.build.model,
@@ -47,7 +47,7 @@ const Home: React.FunctionComponent<RouteComponentProps> = () => {
             first_seen_at_date: element.first_seen_at_date,
             last_seen_at: element.last_seen_at,
             last_seen_at_date: element.last_seen_at_date,
-            photos: element.media.photo_links,
+            photos: element.media ? element.media.photo_links : [],
           });
         });
         setListOfAds(ads);
@@ -61,6 +61,7 @@ const Home: React.FunctionComponent<RouteComponentProps> = () => {
   const handelPages = (event: React.ChangeEvent<unknown>, value: number) => {
     setStartFetchAds((+value - 1) * 10);
     fetchAds();
+    window.scrollTo(0, 0);
   };
 
   return (

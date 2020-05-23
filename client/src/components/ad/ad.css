@@ -10,7 +10,10 @@
 }
 
 .mainImg {
-  width: 248px;
+  max-width: 248px;
+  min-width: 248px;
+  max-height: 186px;
+  min-height: 186px;
 }
 
 .hoverOnImgDiv {
@@ -49,6 +52,10 @@ table {
   text-align: center;
   width: 400px;
   margin: 25px;
+}
+
+td {
+  max-width: 10px;
 }
 
 .carDetail {
